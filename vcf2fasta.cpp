@@ -7,17 +7,25 @@
 #include <cmath>
 #include <algorithm>
 
+// g++ vcf2fasta.cpp -std=c++17 -O3 -o vcf2fasta
+
 void getNames(std::vector <std::string> & indNames, const std::string & line);
 void printVector(const std::vector <std::string> vecteur);
 void treatLine(std::vector <std::string> & alignment, std::string line, const size_t nInd, const unsigned int cov);
 void checkAlleles(std::string & refA, std::string & altA);
 void addNucleotide(std::vector <std::string> & alignment, const std::string word, const size_t indPos, const std::string refA, const std::string altA, const size_t posDP, const size_t posAD, const size_t nFieldSep, const unsigned cov);
-void writeFasta(const std::vector <std::string> & alignment, const std::vector <std::string> & indNames, const std::string outputName);
+void writeFasta(const std::vector <std::string> & alignment, const std::vector <std::string> & indNames, const std::string contigName, std::string speciesName, const std::string outputName);
+void checkCommandLine(int argc);
 
 int main(int argc, char* argv[]){
+	
+	checkCommandLine(argc);
+
 	const std::string vcfFile(argv[1]); // name of the input vcf file
 	const unsigned cov = atoi(argv[2]); // minimum number of reads to call an allele
-	const std::string outputName(argv[3]); // minimum number of reads to call an allele
+	const std::string contigName(argv[3]); // contig name
+	const std::string speciesName(argv[4]); // species name
+	const std::string outputName(argv[5]); // name of the output file 
 	
 	std::size_t i(0);
 	std::size_t nInd;
@@ -48,7 +56,7 @@ int main(int argc, char* argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-	writeFasta(alignment, indNames, outputName);
+	writeFasta(alignment, indNames, contigName, speciesName, outputName);
 
 	return(0);
 }
@@ -250,8 +258,7 @@ void addNucleotide(std::vector <std::string> & alignment, const std::string word
 	}
 }
 
-
-void writeFasta(const std::vector <std::string> & alignment, const std::vector <std::string> & indNames, const std::string outputName){
+void writeFasta(const std::vector <std::string> & alignment, const std::vector <std::string> & indNames, const std::string contigName, std::string speciesName, const std::string outputName){
 	size_t i(0);
 	const size_t nInd(indNames.size());
 	std::ofstream fastaFile;
@@ -259,13 +266,30 @@ void writeFasta(const std::vector <std::string> & alignment, const std::vector <
 	
 	for(i=0; i<nInd; ++i){
 		// allele 1
-		fastaFile << ">" << indNames[i] << "|allele1" << std::endl;
+		fastaFile << ">" << contigName << "|" << speciesName << "|" << indNames[i] << "|allele1" << std::endl;
 		fastaFile << alignment[i*2] << std::endl;
 		
 		// allele 2
-		fastaFile << ">" << indNames[i] << "|allele2" << std::endl;
+		fastaFile << ">" << contigName << "|" << speciesName << "|" << indNames[i] << "|allele2" << std::endl;
 		fastaFile << alignment[i*2 + 1] << std::endl;
 	}
 	
 	fastaFile.close();
 }
+
+void checkCommandLine(int argc){
+	if( argc != 6 ){
+		std::cout << std::endl << " vcf2fasta produces a fasta file from a VCF." << std::endl;
+		std::cout << " in the current version: a single contig is assumed per VCF file." << std::endl;
+		std::cout << " 5 arguments are needed:" << std::endl;
+		std::cout << "\tname of the vcf file (string)." << std::endl;
+		std::cout << "\tnumber of reads to call an allele (integer)." << std::endl;
+		std::cout << "\tcontig's name to print for fasta's ID (string)." << std::endl;
+		std::cout << "\tspecies' name to print for fasta's ID (string)." << std::endl;
+		std::cout << "\tname of the fasta output file (string)." << std::endl << std::endl;
+		std::cout << "\t\t./vcf2fasta subVCF_ama_11.vcf 10 Hmel201012 ama Hmel201012.fasta" << std::endl << std::endl;
+		std::cout << "\tcamille.roux.1983@gmail.com (19/06/2017)" << std::endl << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
+
