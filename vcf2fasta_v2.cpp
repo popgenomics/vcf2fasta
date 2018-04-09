@@ -151,7 +151,9 @@ void treatLine(std::vector <std::string> & alignment, std::string line, const si
 				for(allele = 0; allele<2; ++allele){
 					alignment[(i-10)*2 + allele].push_back('N');
 				}
-			}else{
+			}else{	
+				//std::cout << position << std::endl;
+				//addNucleotide_dbg(alignment, word, i-10, refA, altA, posDP, posAD, posGT, posGQ, nFieldSep, cov, phredLim, std::stoi(position));
 				addNucleotide(alignment, word, i-10, refA, altA, posDP, posAD, posGT, posGQ, nFieldSep, cov, phredLim);
 			}
 		}
@@ -175,65 +177,71 @@ void checkAlleles(std::string & refA, std::string & altA){
 }
 
 void addNucleotide(std::vector <std::string> & alignment, const std::string word,  const size_t indPos, const std::string refA, const std::string altA, const size_t posDP, const size_t posAD, const size_t posGT, const size_t posGQ, const size_t nFieldSep, const unsigned cov, const float phredLim){
-	// word = informations for one individual, for one position
-	size_t i(0);
-	size_t nFieldSep_tmp = std::count(word.begin(), word.end(), ':');
-
-	unsigned int DP(0); 
-	unsigned int cov_refA = 0;
-	unsigned int cov_altA = 0;
-
-	std::string genotype;
-	float phred(0.0);
-	
-	if( nFieldSep_tmp != nFieldSep ){
+	// if no information about the phred quality score GQ
+	if( posGQ == 0 ){
 		alignment[indPos*2].push_back('N');
 		alignment[indPos*2 + 1].push_back('N');
-	}else{
-		std::istringstream iss(word); // stream iss reads through word
-		std::string word2;
+	}else{ // if information about the phred quality score GQ
+		// word = informations for one individual, for one position
+		size_t i(0);
+		size_t nFieldSep_tmp = std::count(word.begin(), word.end(), ':');
 
-		unsigned int test_altAll(0); // 0: no alternative allele; 1: possibly an alternative allele, upon coverage
-				
-		while( std::getline( iss, word2, ':')){
-			++i;
-			if( i==posDP ){
-				if( word2[0] == '.' ){
-					DP = 0;
-				}else{
-					DP = std::stoi(word2);
-				}
-			}
+		unsigned int DP(0); 
+		unsigned int cov_refA = 0;
+		unsigned int cov_altA = 0;
+
+		std::string genotype;
+		float phred(0.0);
 		
-			if( i==posGT ){
-				genotype = word2;
-			}
+		if( nFieldSep_tmp != nFieldSep ){
+			alignment[indPos*2].push_back('N');
+			alignment[indPos*2 + 1].push_back('N');
+		}else{
+			std::istringstream iss(word); // stream iss reads through word
+			std::string word2;
 
-			if( i==posGQ ){
-				phred = std::stof(word2);
-//				std::cout << posGQ << " " << phred << std::endl;
-			//	std::cout << genotype <<  " " << refA << " " << altA << std::endl;
-				if( DP >= cov && phred >= phredLim ){
-					if( genotype == "0/0"){
-						alignment[indPos*2].append(refA); // homozygote 'ref'/'ref'
-						alignment[indPos*2 + 1].append(refA);
+			unsigned int test_altAll(0); // 0: no alternative allele; 1: possibly an alternative allele, upon coverage
+					
+			while( std::getline( iss, word2, ':')){
+				++i;
+				if( i==posDP ){
+					if( word2[0] == '.' ){
+						DP = 0;
+					}else{
+						DP = std::stoi(word2);
 					}
-					if( genotype == "1/1"){
-						alignment[indPos*2].append(altA); // homozygote 'alt'/'alt'
-						alignment[indPos*2 + 1].append(altA);
-					}
-					if( genotype == "1/0" || genotype== "0/1" ){
-						alignment[indPos*2].append(refA); // heterozygote 'ref'/'alt'
-						alignment[indPos*2 + 1].append(altA);
-					}
-					if( genotype == "./."){
-						alignment[indPos*2].push_back('N'); // homozygote 'alt'/'alt'
-						alignment[indPos*2 + 1].push_back('N');
-					}
-				}else{
-						alignment[indPos*2].push_back('N');
-						alignment[indPos*2 + 1].push_back('N');
+				}
+			
+				if( i==posGT ){
+					genotype = word2;
+				}
 
+				if( i==posGQ ){
+					phred = std::stof(word2);
+	//				std::cout << posGQ << " " << phred << std::endl;
+				//	std::cout << genotype <<  " " << refA << " " << altA << std::endl;
+					if( DP >= cov && phred >= phredLim ){
+						if( genotype == "0/0"){
+							alignment[indPos*2].append(refA); // homozygote 'ref'/'ref'
+							alignment[indPos*2 + 1].append(refA);
+						}
+						if( genotype == "1/1"){
+							alignment[indPos*2].append(altA); // homozygote 'alt'/'alt'
+							alignment[indPos*2 + 1].append(altA);
+						}
+						if( genotype == "1/0" || genotype== "0/1" ){
+							alignment[indPos*2].append(refA); // heterozygote 'ref'/'alt'
+							alignment[indPos*2 + 1].append(altA);
+						}
+						if( genotype == "./."){
+							alignment[indPos*2].push_back('N'); // homozygote 'alt'/'alt'
+							alignment[indPos*2 + 1].push_back('N');
+						}
+					}else{
+							alignment[indPos*2].push_back('N');
+							alignment[indPos*2 + 1].push_back('N');
+
+					}
 				}
 			}
 		}
@@ -274,7 +282,9 @@ void checkCommandLine(int argc){
 ///		std::cout << "\t\t./vcf2fasta subVCF_ama_11.vcf 10 Hmel201012 ama Hmel201012.fasta" << std::endl << std::endl;
 		std::cout << "\t\t./vcf2fasta subVCF_ama_11.vcf 8 30 ama" << std::endl << std::endl;
 		std::cout << "\tcamille.roux.1983@gmail.com (24/07/2017)" << std::endl << std::endl;
+		std::cout << "\tCorrected bug: when GQ (phred quality score) is missing at a position, vcf2fasta used to delete the position. This bug is fixed (09/04/2018)" << std::endl << std::endl;
 		exit(EXIT_FAILURE);
 	}
 }
+
 
